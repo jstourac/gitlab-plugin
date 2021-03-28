@@ -274,10 +274,8 @@ class MergeRequestHookTriggerHandlerImpl extends AbstractWebHookTriggerHandler<M
 
         // Check whether the previous title was causing MR to be a draft.
         boolean wasPreviousDraft = previous.toUpperCase().contains(WIP_KEYWORD) || previous.toUpperCase().contains(DRAFT_KEYWORD);
-        // Check whether the current title is causing MR to be a draft.
-        boolean isCurrentDraft = current.toUpperCase().contains(WIP_KEYWORD) || current.toUpperCase().contains(DRAFT_KEYWORD);
 
-        return wasPreviousDraft && !isCurrentDraft;
+        return wasPreviousDraft && !hook.getObjectAttributes().getWorkInProgress();
     }
 
     private boolean isForcedByAddedLabel(MergeRequestHook hook) {
