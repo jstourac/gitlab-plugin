@@ -50,6 +50,9 @@ class MergeRequestHookTriggerHandlerImpl extends AbstractWebHookTriggerHandler<M
     private final EnumSet<Action> skipAllowedStateForActions = EnumSet.of(Action.approved);
     private final boolean cancelPendingBuildsOnUpdate;
 
+    private static String WIP_KEYWORD = "WIP";
+    private static String DRAFT_KEYWORD = "DRAFT";
+
     MergeRequestHookTriggerHandlerImpl(Collection<State> allowedStates, boolean skipWorkInProgressMergeRequest, boolean cancelPendingBuildsOnUpdate) {
         this(allowedStates, EnumSet.noneOf(Action.class), false, skipWorkInProgressMergeRequest, cancelPendingBuildsOnUpdate);
     }
@@ -257,12 +260,24 @@ class MergeRequestHookTriggerHandlerImpl extends AbstractWebHookTriggerHandler<M
 	private boolean isAllowedByConfig(MergeRequestObjectAttributes objectAttributes) {
 		return triggerConfig.apply(objectAttributes);
     }
+
+    /**
+     * Determine whether a recent MR title change caused it to turn from a WIP/Draft MR into a 'ready MR'.
+     *
+     * @param hook hook triggering this action
+     * @return true if MR changed from WIP/Draft to a 'ready MR'
+     */
     private boolean isBecameNoWip(MergeRequestHook hook) {
         MergeRequestChangedTitle changedTitle = Optional.of(hook).map(MergeRequestHook::getChanges).map(MergeRequestChanges::getTitle).orElse(new MergeRequestChangedTitle());
         String current = changedTitle.getCurrent() != null ? changedTitle.getCurrent() : "";
         String previous = changedTitle.getPrevious() != null ? changedTitle.getPrevious() : "";
 
-        return previous.contains("WIP") && !current.contains("WIP");
+        // Check whether the previous title was causing MR to be a draft.
+        boolean wasPreviousDraft = previous.toUpperCase().contains(WIP_KEYWORD) || previous.toUpperCase().contains(DRAFT_KEYWORD);
+        // Check whether the current title is causing MR to be a draft.
+        boolean isCurrentDraft = current.toUpperCase().contains(WIP_KEYWORD) || current.toUpperCase().contains(DRAFT_KEYWORD);
+
+        return wasPreviousDraft && !isCurrentDraft;
     }
 
     private boolean isForcedByAddedLabel(MergeRequestHook hook) {
